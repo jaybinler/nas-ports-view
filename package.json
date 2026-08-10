@@ -1,0 +1,16 @@
+{
+  "name": "nas-ports-view",
+  "version": "1.0.0",
+  "description": "NAS Docker 容器端口查看器 - 查看容器端口与宿主机映射",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "dockerode": "^5.0.1",
+    "express": "^5.2.1"
+  }
+}

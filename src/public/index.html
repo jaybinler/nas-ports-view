@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NAS Docker 端口查看器</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>🐳 NAS Docker 端口查看器</h1>
+    <div class="controls">
+      <span id="hostIp" class="host-ip" title="宿主机 LAN IP"></span>
+      <button id="refresh" type="button">🔄 刷新</button>
+      <label class="auto"><input type="checkbox" id="auto"> 自动刷新(5s)</label>
+    </div>
+  </header>
+  <main>
+    <table id="tbl">
+      <thead>
+        <tr>
+          <th>服务名</th>
+          <th>IP 地址</th>
+          <th>运行状态</th>
+          <th>端口</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <p id="empty" class="empty" hidden>暂无容器</p>
+  </main>
+  <footer><span id="updated"></span></footer>
+  <script src="app.js"></script>
+</body>
+</html>

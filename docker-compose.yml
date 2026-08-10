@@ -1,0 +1,19 @@
+services:
+  nas-ports-view:
+    image: jaybinler/nas-ports-view:latest
+    # 本地构建时注释上一行、取消下行注释：
+    # build: .
+    container_name: nas-ports-view
+    # 关键运行参数：见 README「运行所需权限」
+    network_mode: host        # 读宿主机网卡/监听端口；Web 直接监听宿主端口
+    pid: host                 # 看到所有宿主机 PID，把监听端口归属到容器
+    cap_add:
+      - SYS_PTRACE            # 读取其他进程 /proc/<pid>/fd 所需
+      - DAC_READ_SEARCH
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - PORT=8088
+      - HOST_IP=              # 可选，手动覆盖宿主机 LAN IP
+      - BASIC_AUTH=           # 可选，格式 user:pass 开启 Basic 认证
+    restart: unless-stopped
