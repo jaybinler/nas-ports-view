@@ -105,7 +105,9 @@ export function attributePorts(sockets, inodeToPids, pidTree) {
     const pids = inodeToPids.get(s.inode);
     if (!pids) continue;
     if (!pids.some((p) => pidTree.has(p))) continue;
-    const key = `${s.proto}:${s.port}:${s.addr}`;
+    // 按 proto:port 去重：合并 IPv4(0.0.0.0) 与 IPv6(::) 同端口，
+    // 以及 SO_REUSEPORT 多 worker 同 addr:port 的情况
+    const key = `${s.proto}:${s.port}`;
     if (seen.has(key)) continue;
     seen.add(key);
     ports.push({

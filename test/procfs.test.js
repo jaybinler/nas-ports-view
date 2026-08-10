@@ -99,6 +99,27 @@ test('attributePorts 去重相同端口', () => {
   assert.equal(ports.length, 1);
 });
 
+test('attributePorts 合并 IPv4/IPv6 同端口', () => {
+  // homeassistant 等会同时在 0.0.0.0 和 :: 监听同一端口
+  const sockets = [
+    { proto: 'udp', family: 'ipv4', addr: '0.0.0.0', port: 1900, inode: '300', isListen: true },
+    { proto: 'udp', family: 'ipv6', addr: '::', port: 1900, inode: '301', isListen: true },
+    { proto: 'tcp', family: 'ipv4', addr: '0.0.0.0', port: 8123, inode: '302', isListen: true },
+    { proto: 'tcp', family: 'ipv6', addr: '::', port: 8123, inode: '303', isListen: true },
+  ];
+  const inodeToPids = new Map([
+    ['300', [10]],
+    ['301', [10]],
+    ['302', [10]],
+    ['303', [10]],
+  ]);
+  const tree = new Set([10]);
+  const ports = attributePorts(sockets, inodeToPids, tree);
+  assert.equal(ports.length, 2);
+  assert.equal(ports[0].port, 1900);
+  assert.equal(ports[1].port, 8123);
+});
+
 test('readListeningSockets 通过临时 PROC_ROOT 读取', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'npv-'));
   await fs.mkdir(path.join(dir, 'net'), { recursive: true });
