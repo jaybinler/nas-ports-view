@@ -20,11 +20,29 @@ docker run -d --name nas-ports-view \
   --network host --pid host \
   --cap-add SYS_PTRACE --cap-add DAC_READ_SEARCH \
   -v /var/run/docker.sock:/var/run/docker.sock:ro \
-  -p 8088:8088 \
-  nas-ports-view:latest
+  -e PORT=8088 \
+  jaybinler/nas-ports-view:latest
 ```
 
-> 注：`--network host` 下 `-p` 端口映射不生效，Web 直接监听宿主机的 `PORT`（默认 8088）。
+> 注：`--network host` 下不能用 `-p` 端口映射，Web 端口通过 `PORT` 环境变量设置。
+
+## 自定义端口
+
+因使用 host 网络，端口由 `PORT` 环境变量决定（默认 `8088`），不用 `-p` 映射。
+
+- **docker compose**：复制 `.env.example` 为 `.env` 改 `PORT`，或直接 `PORT=9000 docker compose up -d`。
+- **docker run**：加 `-e PORT=9000`。
+
+```bash
+# 示例：改用 9000 端口
+docker run -d --name nas-ports-view \
+  --network host --pid host \
+  --cap-add SYS_PTRACE --cap-add DAC_READ_SEARCH \
+  -v /var/run/docker.sock:/var/run/docker.sock:ro \
+  -e PORT=9000 \
+  jaybinler/nas-ports-view:latest
+# 访问 http://<NAS_IP>:9000
+```
 
 ## 运行所需权限（重要）
 

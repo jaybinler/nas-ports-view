@@ -2,6 +2,7 @@ node_modules
 test
 .git
 .gitignore
+.env
 .claude
 *.md
 Dockerfile

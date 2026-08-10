@@ -13,7 +13,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
-      - PORT=8088
-      - HOST_IP=              # 可选，手动覆盖宿主机 LAN IP
-      - BASIC_AUTH=           # 可选，格式 user:pass 开启 Basic 认证
+      - PORT=${PORT:-8088}          # Web 监听端口，可用 .env 或环境变量覆盖
+      - HOST_IP=${HOST_IP:-}        # 可选，手动覆盖宿主机 LAN IP
+      - BASIC_AUTH=${BASIC_AUTH:-}  # 可选，user:pass 开启 Basic 认证
     restart: unless-stopped
