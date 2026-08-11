@@ -3,33 +3,78 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NAS Docker 端口查看器</title>
+  <title>NAS::PORTS — 容器端口监控台</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Major+Mono+Display&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1>🐳 NAS Docker 端口查看器</h1>
-    <div class="controls">
-      <span id="hostIp" class="host-ip" title="宿主机 LAN IP"></span>
-      <button id="refresh" type="button">🔄 刷新</button>
-      <label class="auto"><input type="checkbox" id="auto"> 自动刷新(5s)</label>
+  <!-- CRT 氛围层 -->
+  <div class="crt-scanlines" aria-hidden="true"></div>
+  <div class="crt-grain" aria-hidden="true"></div>
+  <div class="crt-vignette" aria-hidden="true"></div>
+
+  <div class="console">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">◆</span>
+        <h1 class="brand-title">nas<span class="dim">::</span>ports</h1>
+        <span class="cursor" aria-hidden="true">▌</span>
+      </div>
+      <div class="topbar-meta">
+        <div class="readout">
+          <span class="readout-label">node</span>
+          <span class="readout-value" id="hostIp">—.—.—.—</span>
+        </div>
+        <button id="refresh" class="btn-refresh" type="button" title="重新扫描">
+          <span class="btn-glyph" aria-hidden="true">↻</span> rescan
+        </button>
+        <label class="toggle" title="自动刷新 (5s)">
+          <input type="checkbox" id="auto">
+          <span class="toggle-track"><span class="toggle-led"></span></span>
+          <span class="toggle-label">auto</span>
+        </label>
+      </div>
+    </header>
+
+    <div class="status-strip">
+      <span class="strip-item"><span class="led led-green" id="signalLed"></span><span id="signalText">signal ok</span></span>
+      <span class="strip-item" id="countReadout">containers: 0</span>
+      <span class="strip-item" id="updatedReadout">last scan: --:--:--</span>
+      <span class="strip-spacer"></span>
+      <span class="strip-item dim">docker · procfs · lan</span>
     </div>
-  </header>
-  <main>
-    <table id="tbl">
-      <thead>
-        <tr>
-          <th>服务名</th>
-          <th>IP 地址</th>
-          <th>运行状态</th>
-          <th>端口</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-    <p id="empty" class="empty" hidden>暂无容器</p>
-  </main>
-  <footer><span id="updated"></span></footer>
+
+    <main class="grid-wrap">
+      <div class="grid-bg" aria-hidden="true"></div>
+      <div class="scan-line" aria-hidden="true"></div>
+      <div class="table-scroll">
+        <table class="ports-table">
+          <thead>
+            <tr>
+              <th class="col-svc">service</th>
+              <th class="col-ip">ip.addr</th>
+              <th class="col-st">status</th>
+              <th class="col-net">net.mode</th>
+              <th class="col-ports">ports</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <div id="empty" class="empty" hidden>
+          <span class="empty-mark" aria-hidden="true">∅</span>
+          <span>no containers on this node</span>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footbar">
+      <span>nas-ports-view</span>
+      <span class="foot-dim">read-only monitor · v1</span>
+    </footer>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>

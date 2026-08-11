@@ -1,75 +1,118 @@
-const tbody = document.querySelector('#tbl tbody');
+// nas-ports-view · 前端渲染逻辑
+// 拉取 /api/containers 并渲染为磷光监控台表格
+
+const tbody = document.getElementById('tbody');
 const refreshBtn = document.getElementById('refresh');
 const autoChk = document.getElementById('auto');
 const hostIpEl = document.getElementById('hostIp');
 const emptyEl = document.getElementById('empty');
-const updatedEl = document.getElementById('updated');
+const countEl = document.getElementById('countReadout');
+const updatedEl = document.getElementById('updatedReadout');
+const signalLed = document.getElementById('signalLed');
+const signalText = document.getElementById('signalText');
+
 let timer = null;
+let firstRender = true;
 
 async function load() {
   try {
     const r = await fetch('/api/containers');
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const data = await r.json();
+    setSignal(true);
     render(data);
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="4" class="error">加载失败：${esc(e.message)}</td></tr>`;
-    updatedEl.textContent = '';
+    setSignal(false);
+    tbody.innerHTML = `<tr class="error-row"><td colspan="5">SIGNAL LOST - ${esc(e.message)}</td></tr>`;
+    updatedEl.textContent = 'last scan: error';
   }
+}
+
+function setSignal(ok) {
+  signalLed.className = 'led ' + (ok ? 'led-green' : 'led-red');
+  signalText.textContent = ok ? 'signal ok' : 'signal lost';
 }
 
 function render(data) {
-  hostIpEl.textContent = data.hostIp ? `宿主机 ${data.hostIp}` : '';
+  hostIpEl.textContent = data.hostIp || '-.-.-.-';
   const cs = data.containers || [];
+  countEl.textContent = 'containers: ' + cs.length;
   tbody.innerHTML = '';
+
   if (cs.length === 0) {
     emptyEl.hidden = false;
-    updatedEl.textContent = '';
+    updatedEl.textContent = 'last scan: ' + now();
+    firstRender = false;
     return;
   }
   emptyEl.hidden = true;
-  for (const c of cs) {
-    const tr = document.createElement('tr');
-    const nameCell =
-      c.service !== c.containerName
-        ? `${esc(c.service)}<div class="sub">${esc(c.containerName)}</div>`
-        : esc(c.service);
-    tr.innerHTML = `
-      <td>${nameCell}</td>
-      <td class="ip">${c.ip ? esc(c.ip) : '<span class="muted">-</span>'}</td>
-      <td>${statusBadge(c)}</td>
-      <td class="ports">${portBadges(c.ports, c.networkMode)}</td>
-    `;
-    tbody.appendChild(tr);
-  }
-  updatedEl.textContent = '更新于 ' + new Date().toLocaleTimeString();
+
+  tbody.innerHTML = cs.map((c, i) => rowHTML(c, i)).join('');
+  updatedEl.textContent = 'last scan: ' + now();
+  firstRender = false;
 }
 
-function statusBadge(c) {
-  const cls = c.status === 'running' ? 'ok' : c.status === 'paused' ? 'warn' : 'stop';
-  let txt = c.statusText;
-  if (c.health) txt += ` · ${c.health}`;
-  return `<span class="badge ${cls}">${esc(txt)}</span>`;
+function rowHTML(c, i) {
+  const anim = firstRender
+    ? ` row-in" style="animation-delay:${Math.min(i * 45, 650)}ms`
+    : '"';
+  const nameCell = c.service !== c.containerName
+    ? `<span class="svc-name">${esc(c.service)}</span><span class="svc-sub">${esc(c.containerName)}</span>`
+    : `<span class="svc-name">${esc(c.service)}</span>`;
+  const ipCell = c.ip ? `<span class="ip-val">${esc(c.ip)}</span>` : `<span class="dim">-</span>`;
+  return `<tr class="row${anim}>
+      <td class="col-svc">${nameCell}</td>
+      <td class="col-ip">${ipCell}</td>
+      <td class="col-st">${statusCell(c)}</td>
+      <td class="col-net">${networkCell(c)}</td>
+      <td class="col-ports">${portCell(c.ports, c.networkMode)}</td>
+    </tr>`;
 }
 
-function portBadges(ports, networkMode) {
+function networkCell(c) {
+  const m = c.networkMode || '';
+  if (m === 'host') return '<span class="net net-host">host</span>';
+  if (m === 'bridge') return '<span class="net">bridge</span>';
+  if (m === 'none') return '<span class="net dim">none</span>';
+  if (m.startsWith('container:')) return '<span class="net dim">container</span>';
+  return `<span class="net">${esc(m)}</span>`;
+}
+
+function statusCell(c) {
+  const cls = c.status === 'running'
+    ? 'led-green pulse'
+    : c.status === 'paused'
+      ? 'led-amber'
+      : 'led-red';
+  let label = c.statusText;
+  if (c.health) label += ' · ' + c.health;
+  return `<span class="status"><span class="led ${cls}"></span>${esc(label)}</span>`;
+}
+
+function portCell(ports, networkMode) {
   if (!ports || ports.length === 0) {
-    const hint = networkMode && networkMode.startsWith('container:')
-      ? ` <span class="muted">共享 ${esc(networkMode.slice('container:'.length))} 网络</span>`
-      : '';
-    return `<span class="muted">-</span>${hint}`;
+    if (networkMode && networkMode.startsWith('container:')) {
+      const ref = networkMode.slice('container:'.length);
+      return `<span class="dim">↳ shares ${esc(ref.slice(0, 16))}</span>`;
+    }
+    return `<span class="dim">-</span>`;
   }
   return ports
     .map((p) => {
+      const proto = p.proto || 'tcp';
       if (p.kind === 'host-listen') {
-        return `<span class="port host" title="host 模式监听 ${esc(p.listenAddr)}:${p.port}">${p.port}/${p.proto} <em>host</em></span>`;
+        return `<span class="port ${proto} host" title="host 模式监听 ${esc(p.listenAddr || '')}:${p.port}">${p.port}/${proto}</span>`;
       }
       if (p.kind === 'mapped') {
-        return `<span class="port" title="${esc(p.hostIp)}:${p.hostPort} -> ${p.containerPort}/${p.proto}">${p.hostPort}→${p.containerPort}/${p.proto}</span>`;
+        return `<span class="port ${proto} mapped" title="${esc(p.hostIp || '0.0.0.0')}:${p.hostPort} -> ${p.containerPort}/${proto}">${p.hostPort}->${p.containerPort}/${proto}</span>`;
       }
-      return `<span class="port internal" title="未发布，仅容器内部">${p.containerPort}/${p.proto} <em>内部</em></span>`;
+      return `<span class="port ${proto} internal" title="未发布，仅容器内部">· ${p.containerPort}/${proto}</span>`;
     })
     .join('');
+}
+
+function now() {
+  return new Date().toLocaleTimeString('en-GB');
 }
 
 function esc(s) {
