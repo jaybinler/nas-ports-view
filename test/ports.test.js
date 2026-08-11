@@ -53,3 +53,25 @@ test('mappedPorts 缺省 HostIp 回退 0.0.0.0', () => {
   const ports = mappedPorts({ '80/tcp': [{ HostPort: '8080' }] });
   assert.equal(ports[0].hostIp, '0.0.0.0');
 });
+
+test('mappedPorts 合并 IPv4/IPv6 双栈同宿主端口', () => {
+  // Docker 发布端口时常同时绑定 0.0.0.0 与 ::，HostPort 相同
+  const ports = mappedPorts({
+    '8095/tcp': [
+      { HostIp: '0.0.0.0', HostPort: '32768' },
+      { HostIp: '::', HostPort: '32768' },
+    ],
+  });
+  assert.equal(ports.length, 1);
+  assert.equal(ports[0].hostPort, 32768);
+});
+
+test('mappedPorts 不同宿主端口保留', () => {
+  const ports = mappedPorts({
+    '80/tcp': [
+      { HostIp: '0.0.0.0', HostPort: '8080' },
+      { HostIp: '::', HostPort: '8081' },
+    ],
+  });
+  assert.equal(ports.length, 2);
+});

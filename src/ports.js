@@ -27,6 +27,7 @@ export async function resolveHostPorts(rootPid, ctx) {
 // 例：{ "80/tcp":[{"HostIp":"0.0.0.0","HostPort":"8080"}], "53/udp": null }
 export function mappedPorts(portsMap) {
   const result = [];
+  const seen = new Set();
   if (!portsMap) return result;
   for (const [key, bindings] of Object.entries(portsMap)) {
     const idx = key.lastIndexOf('/');
@@ -35,14 +36,22 @@ export function mappedPorts(portsMap) {
     const proto = key.slice(idx + 1);
     if (!bindings || bindings.length === 0) {
       // 未发布，仅容器内部
+      const dk = `${proto}:${containerPort}:internal`;
+      if (seen.has(dk)) continue;
+      seen.add(dk);
       result.push({ proto, containerPort, hostIp: null, hostPort: null, kind: 'internal' });
     } else {
       for (const b of bindings) {
+        const hostPort = b.HostPort ? Number(b.HostPort) : null;
+        // 合并 0.0.0.0 与 :: 同宿主端口的双栈绑定，避免重复
+        const dk = `${proto}:${containerPort}:${hostPort}`;
+        if (seen.has(dk)) continue;
+        seen.add(dk);
         result.push({
           proto,
           containerPort,
           hostIp: b.HostIp || '0.0.0.0',
-          hostPort: b.HostPort ? Number(b.HostPort) : null,
+          hostPort,
           kind: 'mapped',
         });
       }

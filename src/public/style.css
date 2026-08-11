@@ -301,6 +301,7 @@ body {
   width: 100%;
   border-collapse: collapse;
   min-width: 760px;
+  table-layout: fixed;
 }
 .ports-table thead th {
   font-size: 10px;
@@ -314,6 +315,7 @@ body {
   background: rgba(0, 0, 0, 0.3);
   position: sticky;
   top: 0;
+  white-space: nowrap;
   backdrop-filter: blur(2px);
 }
 .ports-table tbody td {
@@ -325,15 +327,15 @@ body {
 .ports-table tbody tr.row:hover { background: rgba(255, 180, 84, 0.05); }
 .ports-table tbody tr.row-in { animation: rowIn 0.5s ease both; }
 @keyframes rowIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: none; }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
-.col-svc   { min-width: 150px; }
-.col-ip    { min-width: 130px; }
-.col-st    { min-width: 110px; white-space: nowrap; }
-.col-net   { min-width: 92px; white-space: nowrap; }
-.col-ports { min-width: 240px; }
+.col-svc   { width: 22%; }
+.col-ip    { width: 15%; }
+.col-st    { width: 13%; white-space: nowrap; }
+.col-net   { width: 10%; white-space: nowrap; }
+.col-ports { width: 40%; }
 
 .svc-name {
   display: block;
