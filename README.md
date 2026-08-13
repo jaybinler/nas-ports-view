@@ -76,7 +76,7 @@ services:
 
 | 变量 | 默认 | 说明 |
 |------|------|------|
-| `PORT` | `8088` | Web 监听端口 |
+| `PORT` | `8088` | Web 监听端口默认可修改 |
 | `HOST_IP` | 自动探测 | 手动覆盖宿主机 LAN IP（多网卡/探测不准时使用） |
 | `BASIC_AUTH` | 无 | `user:pass` 开启 Basic 认证 |
 | `DOCKER_SOCKET` | `/var/run/docker.sock` | Docker socket 路径 |
