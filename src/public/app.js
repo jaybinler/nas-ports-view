@@ -13,6 +13,8 @@ const signalText = document.getElementById('signalText');
 
 let timer = null;
 let firstRender = true;
+const PREVIEW = 5;          // 端口超过此数则折叠，点击 +N 展开
+const expanded = new Set(); // 已展开的容器 id，跨刷新保留
 
 async function load() {
   try {
@@ -60,12 +62,15 @@ function rowHTML(c, i) {
     ? `<span class="svc-name">${esc(c.service)}</span><span class="svc-sub">${esc(c.containerName)}</span>`
     : `<span class="svc-name">${esc(c.service)}</span>`;
   const ipCell = c.ip ? `<span class="ip-val">${esc(c.ip)}</span>` : `<span class="dim">-</span>`;
+  const portsHtml = portCell(c.ports, c.networkMode, c.id);
+  const collapsed = c.ports && c.ports.length > PREVIEW && !expanded.has(c.id);
+  const portsCls = collapsed ? 'col-ports collapsed' : 'col-ports';
   return `<tr class="row${anim}>
       <td class="col-svc">${nameCell}</td>
       <td class="col-ip">${ipCell}</td>
       <td class="col-st">${statusCell(c)}</td>
       <td class="col-net">${networkCell(c)}</td>
-      <td class="col-ports">${portCell(c.ports, c.networkMode)}</td>
+      <td class="${portsCls}">${portsHtml}</td>
     </tr>`;
 }
 
@@ -89,7 +94,7 @@ function statusCell(c) {
   return `<span class="status"><span class="led ${cls}"></span>${esc(label)}</span>`;
 }
 
-function portCell(ports, networkMode) {
+function portCell(ports, networkMode, id) {
   if (!ports || ports.length === 0) {
     if (networkMode && networkMode.startsWith('container:')) {
       const ref = networkMode.slice('container:'.length);
@@ -97,7 +102,7 @@ function portCell(ports, networkMode) {
     }
     return `<span class="dim">-</span>`;
   }
-  return ports
+  const chips = ports
     .map((p) => {
       const proto = p.proto || 'tcp';
       if (p.kind === 'host-listen') {
@@ -109,6 +114,10 @@ function portCell(ports, networkMode) {
       return `<span class="port ${proto} internal" title="未发布，仅容器内部">· ${p.containerPort}/${proto}</span>`;
     })
     .join('');
+  if (ports.length <= PREVIEW) return chips;
+  const more = ports.length - PREVIEW;
+  const isOpen = expanded.has(id);
+  return `${chips}<span class="port-more" tabindex="0" role="button" data-id="${esc(id)}" data-more="${more}">${isOpen ? '收起' : '+' + more}</span>`;
 }
 
 function now() {
@@ -147,5 +156,31 @@ themeToggle.addEventListener('click', () => {
   syncThemeGlyph();
 });
 syncThemeGlyph();
+
+// 端口折叠/展开（事件委托，跨重渲染有效）
+function toggleMore(more) {
+  const id = more.dataset.id;
+  const cell = more.closest('.col-ports');
+  if (expanded.has(id)) {
+    expanded.delete(id);
+    cell.classList.add('collapsed');
+    more.textContent = '+' + more.dataset.more;
+  } else {
+    expanded.add(id);
+    cell.classList.remove('collapsed');
+    more.textContent = '收起';
+  }
+}
+tbody.addEventListener('click', (e) => {
+  const more = e.target.closest('.port-more');
+  if (more) toggleMore(more);
+});
+tbody.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const more = e.target.closest('.port-more');
+  if (!more) return;
+  e.preventDefault();
+  toggleMore(more);
+});
 
 load();

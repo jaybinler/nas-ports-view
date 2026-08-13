@@ -468,6 +468,30 @@ body {
 .port.udp.internal { color: var(--cyan-dim); }
 .port.udp:hover    { border-color: var(--cyan); }
 
+/* 端口折叠：超过 5 个时收起，点击 +N 展开 */
+.col-ports.collapsed .port:nth-child(n+6) { display: none; }
+.port-more {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11.5px;
+  padding: 3px 9px;
+  border: 1px dashed var(--line);
+  border-radius: 2px;
+  background: var(--port-bg);
+  color: var(--phosphor-dim);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: 0.15s ease;
+}
+.port-more:hover,
+.port-more:focus-visible {
+  color: var(--phosphor);
+  border-color: var(--phosphor);
+  outline: none;
+  box-shadow: var(--port-hover-shadow);
+}
+
 /* 网络模式标签 */
 .net {
   display: inline-block;
