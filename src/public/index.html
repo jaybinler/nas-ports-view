@@ -7,6 +7,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Major+Mono+Display&display=swap" rel="stylesheet">
+  <script>
+    // 首次默认亮色(高亮)主题；选择记忆于 localStorage
+    (function () {
+      var t = localStorage.getItem('npv-theme');
+      if (t !== 'light' && t !== 'dark') t = 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -27,6 +35,9 @@
           <span class="readout-label">node</span>
           <span class="readout-value" id="hostIp">—.—.—.—</span>
         </div>
+        <button id="themeToggle" class="btn-theme" type="button" title="切换主题" aria-label="切换主题">
+          <span class="theme-glyph" aria-hidden="true">☾</span>
+        </button>
         <button id="refresh" class="btn-refresh" type="button" title="重新扫描">
           <span class="btn-glyph" aria-hidden="true">↻</span> rescan
         </button>

@@ -1,9 +1,12 @@
 /* ============================================================
    nas-ports-view · phosphor monitoring console
    琥珀色 CRT 监控台美学：扫描线 / 颗粒 / 网格 / LED
+   支持亮色(高亮)/暗色双主题，首次默认亮色，选择记忆于 localStorage
    ============================================================ */
 
-:root {
+/* ---------- 暗色主题（磷光） ---------- */
+:root,
+[data-theme="dark"] {
   --bg: #0b0a08;
   --bg-2: #100e0b;
   --bg-3: #15120d;
@@ -20,8 +23,60 @@
   --cyan-bright: #a8e6f5;
   --cyan-dim: #4a8a9c;
   --glow: 0 0 10px rgba(255, 180, 84, 0.35);
-  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace;
-  --display: "Major Mono Display", var(--mono);
+  --title-shadow: 0 0 20px rgba(255, 180, 84, 0.55), 0 0 4px rgba(255, 180, 84, 0.4);
+  --err-shadow: 0 0 8px rgba(255, 107, 94, 0.4);
+  --scanline-opacity: 0.35;
+  --grain-opacity: 0.05;
+  --vignette: rgba(0, 0, 0, 0.52);
+  --scan-line-opacity: 0.3;
+  --port-bg: rgba(0, 0, 0, 0.28);
+  --row-hover: rgba(255, 180, 84, 0.05);
+  --th-bg: rgba(0, 0, 0, 0.3);
+  --toggle-track-bg: rgba(0, 0, 0, 0.35);
+  --net-bg: rgba(0, 0, 0, 0.2);
+  --net-host-bg: rgba(255, 200, 87, 0.08);
+  --net-host-border: rgba(255, 200, 87, 0.45);
+  --port-hover-shadow: 0 0 8px rgba(255, 180, 84, 0.2);
+  --btn-hover-shadow: 0 0 16px rgba(255, 180, 84, 0.28);
+  --body-glow1: rgba(255, 140, 40, 0.07);
+  --body-glow2: rgba(255, 180, 84, 0.045);
+}
+
+/* ---------- 亮色主题（高亮，默认） ---------- */
+[data-theme="light"] {
+  --bg: #f3eee2;
+  --bg-2: #eae3d2;
+  --bg-3: #e0d8c4;
+  --phosphor: #6b4513;
+  --phosphor-bright: #2a1805;
+  --phosphor-dim: #8a6a3a;
+  --phosphor-faint: #ab9568;
+  --line: rgba(107, 69, 19, 0.18);
+  --line-soft: rgba(107, 69, 19, 0.09);
+  --green: #2f8f5b;
+  --red: #c4392c;
+  --amber: #a9650c;
+  --cyan: #15768a;
+  --cyan-bright: #0d5466;
+  --cyan-dim: #4f7e8a;
+  --glow: none;
+  --title-shadow: none;
+  --err-shadow: none;
+  --scanline-opacity: 0.10;
+  --grain-opacity: 0.035;
+  --vignette: rgba(90, 60, 10, 0.10);
+  --scan-line-opacity: 0.18;
+  --port-bg: rgba(255, 252, 245, 0.7);
+  --row-hover: rgba(107, 69, 19, 0.06);
+  --th-bg: rgba(107, 69, 19, 0.06);
+  --toggle-track-bg: rgba(107, 69, 19, 0.12);
+  --net-bg: rgba(107, 69, 19, 0.05);
+  --net-host-bg: rgba(169, 101, 12, 0.10);
+  --net-host-border: rgba(169, 101, 12, 0.40);
+  --port-hover-shadow: 0 0 8px rgba(107, 69, 19, 0.15);
+  --btn-hover-shadow: 0 0 14px rgba(107, 69, 19, 0.15);
+  --body-glow1: rgba(255, 200, 120, 0.25);
+  --body-glow2: rgba(255, 180, 84, 0.12);
 }
 
 * { box-sizing: border-box; }
@@ -30,8 +85,8 @@ html, body { height: 100%; }
 body {
   margin: 0;
   background:
-    radial-gradient(1200px 600px at 72% -12%, rgba(255, 140, 40, 0.07), transparent 60%),
-    radial-gradient(900px 520px at 8% 112%, rgba(255, 180, 84, 0.045), transparent 60%),
+    radial-gradient(1200px 600px at 72% -12%, var(--body-glow1), transparent 60%),
+    radial-gradient(900px 520px at 8% 112%, var(--body-glow2), transparent 60%),
     var(--bg);
   color: var(--phosphor);
   font-family: var(--mono);
@@ -41,6 +96,7 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overflow-x: hidden;
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 /* ---------- CRT 氛围层 ---------- */
@@ -60,17 +116,17 @@ body {
     transparent 1px,
     transparent 3px
   );
-  opacity: 0.35;
+  opacity: var(--scanline-opacity);
   mix-blend-mode: multiply;
 }
 .crt-grain {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  opacity: 0.05;
+  opacity: var(--grain-opacity);
   mix-blend-mode: overlay;
   animation: grain 1.1s steps(5) infinite;
 }
 .crt-vignette {
-  background: radial-gradient(ellipse at center, transparent 56%, rgba(0, 0, 0, 0.52) 100%);
+  background: radial-gradient(ellipse at center, transparent 56%, var(--vignette) 100%);
 }
 @keyframes grain {
   0%   { transform: translate(0, 0); }
@@ -117,8 +173,8 @@ body {
   animation: markPulse 3.2s ease-in-out infinite;
 }
 @keyframes markPulse {
-  0%, 100% { opacity: 1; text-shadow: 0 0 8px rgba(255, 200, 87, 0.4); }
-  50%      { opacity: 0.55; text-shadow: 0 0 4px rgba(255, 200, 87, 0.2); }
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
 }
 .brand-title {
   font-family: var(--display);
@@ -126,7 +182,7 @@ body {
   font-weight: 400;
   letter-spacing: 0.015em;
   color: var(--phosphor-bright);
-  text-shadow: 0 0 20px rgba(255, 180, 84, 0.55), 0 0 4px rgba(255, 180, 84, 0.4);
+  text-shadow: var(--title-shadow);
   margin: 0;
   text-transform: lowercase;
 }
@@ -152,7 +208,7 @@ body {
 .readout-value {
   font-size: 14px;
   color: var(--phosphor-bright);
-  text-shadow: 0 0 8px rgba(255, 180, 84, 0.35);
+  text-shadow: var(--glow);
 }
 
 /* 刷新按钮 */
@@ -176,12 +232,35 @@ body {
 .btn-refresh:hover {
   border-color: var(--phosphor);
   color: var(--phosphor-bright);
-  box-shadow: 0 0 16px rgba(255, 180, 84, 0.28);
+  box-shadow: var(--btn-hover-shadow);
   text-shadow: var(--glow);
 }
 .btn-refresh:active { transform: translateY(1px); }
 .btn-glyph { display: inline-block; transition: transform 0.45s ease; }
 .btn-refresh:hover .btn-glyph { transform: rotate(180deg); }
+
+/* 主题切换按钮 */
+.btn-theme {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  font-family: var(--mono);
+  font-size: 15px;
+  color: var(--phosphor);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+.btn-theme:hover {
+  border-color: var(--phosphor);
+  color: var(--phosphor-bright);
+  box-shadow: var(--btn-hover-shadow);
+}
+.theme-glyph { line-height: 1; }
 
 /* auto 开关 */
 .toggle {
@@ -203,7 +282,7 @@ body {
   border-radius: 11px;
   position: relative;
   transition: 0.2s ease;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--toggle-track-bg);
 }
 .toggle-led {
   position: absolute;
@@ -286,9 +365,9 @@ body {
   right: 0;
   top: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(255, 180, 84, 0.55), transparent);
+  background: linear-gradient(90deg, transparent, var(--amber), transparent);
   pointer-events: none;
-  opacity: 0.3;
+  opacity: var(--scan-line-opacity);
   animation: scan 7.5s linear infinite;
 }
 @keyframes scan {
@@ -312,7 +391,7 @@ body {
   text-align: left;
   padding: 12px 16px;
   border-bottom: 1px solid var(--line);
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--th-bg);
   position: sticky;
   top: 0;
   white-space: nowrap;
@@ -324,7 +403,7 @@ body {
   vertical-align: top;
 }
 .ports-table tbody tr.row { transition: background 0.15s ease; }
-.ports-table tbody tr.row:hover { background: rgba(255, 180, 84, 0.05); }
+.ports-table tbody tr.row:hover { background: var(--row-hover); }
 .ports-table tbody tr.row-in { animation: rowIn 0.5s ease both; }
 @keyframes rowIn {
   from { opacity: 0; }
@@ -341,7 +420,7 @@ body {
   display: block;
   color: var(--phosphor-bright);
   font-weight: 500;
-  text-shadow: 0 0 8px rgba(255, 180, 84, 0.25);
+  text-shadow: var(--glow);
 }
 .svc-sub {
   display: block;
@@ -370,12 +449,12 @@ body {
   padding: 3px 9px;
   border: 1px solid var(--line);
   border-radius: 2px;
-  background: rgba(0, 0, 0, 0.28);
+  background: var(--port-bg);
   color: var(--phosphor);
   white-space: nowrap;
   transition: 0.15s ease;
 }
-.port:hover { border-color: var(--phosphor); box-shadow: 0 0 8px rgba(255, 180, 84, 0.2); }
+.port:hover { border-color: var(--phosphor); box-shadow: var(--port-hover-shadow); }
 .port.internal { border-style: dashed; }
 
 /* TCP - 琥珀系 */
@@ -387,7 +466,7 @@ body {
 .port.udp.mapped   { color: var(--cyan-bright); }
 .port.udp.host     { color: var(--cyan); }
 .port.udp.internal { color: var(--cyan-dim); }
-.port.udp:hover    { border-color: var(--cyan); box-shadow: 0 0 8px rgba(94, 200, 224, 0.25); }
+.port.udp:hover    { border-color: var(--cyan); }
 
 /* 网络模式标签 */
 .net {
@@ -398,13 +477,13 @@ body {
   padding: 2px 9px;
   border: 1px solid var(--line-soft);
   border-radius: 2px;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--net-bg);
 }
 .net-host {
   color: var(--amber);
-  border-color: rgba(255, 200, 87, 0.45);
-  background: rgba(255, 200, 87, 0.08);
-  text-shadow: 0 0 8px rgba(255, 200, 87, 0.3);
+  border-color: var(--net-host-border);
+  background: var(--net-host-bg);
+  text-shadow: var(--glow);
 }
 .net.dim { color: var(--phosphor-faint); }
 
@@ -425,7 +504,7 @@ tr.error-row td {
   text-align: center;
   padding: 32px;
   letter-spacing: 0.08em;
-  text-shadow: 0 0 8px rgba(255, 107, 94, 0.4);
+  text-shadow: var(--err-shadow);
 }
 
 /* ---------- 页脚 ---------- */

@@ -131,4 +131,21 @@ autoChk.addEventListener('change', () => {
   }
 });
 
+// 主题切换（亮/暗），记忆于 localStorage
+const themeToggle = document.getElementById('themeToggle');
+const themeGlyph = themeToggle.querySelector('.theme-glyph');
+function syncThemeGlyph() {
+  // 显示点击后切换到的主题：暗色时显示☀（切到亮），亮色时显示☾（切到暗）
+  themeGlyph.textContent =
+    document.documentElement.getAttribute('data-theme') === 'dark' ? '☀' : '☾';
+}
+themeToggle.addEventListener('click', () => {
+  const next =
+    document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('npv-theme', next);
+  syncThemeGlyph();
+});
+syncThemeGlyph();
+
 load();
