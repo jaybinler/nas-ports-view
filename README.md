@@ -133,6 +133,25 @@ npm test          # 单元测试（纯函数 + 临时 /proc 解析）
 npm start         # 本地运行（需 Docker）
 ```
 
+### 界面预览与响应式验收
+
+```powershell
+node scripts/preview.mjs
+# 访问 http://127.0.0.1:19088
+# 本地前端读取 http://192.168.31.6:9088/api/containers，不操作 Docker。
+```
+
+通过 `NAS_URL` 指定其他 NAS 地址，使用 `PREVIEW_PORT` 更换本地预览端口。
+预览服务仅监听本机回环地址，不用于 NAS 生产部署。
+
+- 默认页面使用 NAS 实际数据；`?fixture=edge` 验证长名称、IPv6、20 个端口及已停止应用。
+- `?fixture=empty` 验证空列表；`?fixture=error` 验证首次读取失败。
+- `?fixture=flaky` 首次成功、第二次扫描失败、第三次恢复，用于检查旧数据保留。
+- 电脑端显示五列表格；窄屏显示应用卡片。点击应用名称查看容器名、完整网络及端口地址。
+- `npm test` 包含首次渲染行结构、外部数据转义和端口显示规则回归检查。
+
+本次浏览器验证记录见 [docs/ui-verification.md](docs/ui-verification.md)。
+
 ## License
 
 MIT

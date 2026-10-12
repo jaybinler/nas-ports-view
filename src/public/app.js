@@ -1,186 +1,106 @@
-// nas-ports-view · 前端渲染逻辑
-// 拉取 /api/containers 并渲染为磷光监控台表格
+import { PREVIEW, rowHTML } from './view.js';
 
 const tbody = document.getElementById('tbody');
 const refreshBtn = document.getElementById('refresh');
 const autoChk = document.getElementById('auto');
-const hostIpEl = document.getElementById('hostIp');
-const emptyEl = document.getElementById('empty');
-const countEl = document.getElementById('countReadout');
-const updatedEl = document.getElementById('updatedReadout');
-const signalLed = document.getElementById('signalLed');
-const signalText = document.getElementById('signalText');
-
-let timer = null;
+const notice = document.getElementById('notice');
+const expanded = new Set();
 let firstRender = true;
-const PREVIEW = 5;          // 端口超过此数则折叠，点击 +N 展开
-const expanded = new Set(); // 已展开的容器 id，跨刷新保留
+let hasData = false;
+let loading = false;
+let timer = null;
 
+// 只允许一个请求在途；失败保留上次成功数据，超时后可重试。
 async function load() {
+  if (loading) return;
+  loading = true;
+  refreshBtn.disabled = true;
+  refreshBtn.setAttribute('aria-busy', 'true');
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
   try {
-    const r = await fetch('/api/containers');
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const data = await r.json();
-    setSignal(true);
+    const response = await fetch('/api/containers', { signal: controller.signal, cache: 'no-store' });
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const data = await response.json();
+    if (!data || !Array.isArray(data.containers) || data.containers.some(c =>
+      !c || typeof c !== 'object' || typeof c.id !== 'string' ||
+      (c.ports != null && (!Array.isArray(c.ports) || c.ports.some(p => !p || typeof p !== 'object'))))) {
+      throw new Error('接口数据格式异常');
+    }
     render(data);
-  } catch (e) {
+    hasData = true;
+    notice.hidden = true;
+    setSignal(true);
+  } catch (error) {
     setSignal(false);
-    tbody.innerHTML = `<tr class="error-row"><td colspan="5">SIGNAL LOST - ${esc(e.message)}</td></tr>`;
-    updatedEl.textContent = 'last scan: error';
+    notice.hidden = false;
+    notice.textContent = `${hasData ? '更新失败，保留上次成功数据。' : '读取失败。'}${error.name === 'AbortError' ? '请求超时' : error.message}；请点击重新扫描重试。`;
+  } finally {
+    clearTimeout(timeout);
+    loading = false;
+    refreshBtn.disabled = false;
+    refreshBtn.removeAttribute('aria-busy');
   }
 }
 
 function setSignal(ok) {
-  signalLed.className = 'led ' + (ok ? 'led-green' : 'led-red');
-  signalText.textContent = ok ? 'signal ok' : 'signal lost';
+  document.getElementById('signalLed').className = 'led ' + (ok ? 'led-green' : 'led-red');
+  document.getElementById('signalText').textContent = ok ? '连接正常' : '更新失败';
 }
 
 function render(data) {
-  hostIpEl.textContent = data.hostIp || '-.-.-.-';
-  const cs = data.containers || [];
-  countEl.textContent = 'containers: ' + cs.length;
-  tbody.innerHTML = '';
-
-  if (cs.length === 0) {
-    emptyEl.hidden = false;
-    updatedEl.textContent = 'last scan: ' + now();
-    firstRender = false;
-    return;
-  }
-  emptyEl.hidden = true;
-
-  tbody.innerHTML = cs.map((c, i) => rowHTML(c, i)).join('');
-  updatedEl.textContent = 'last scan: ' + now();
+  const openDetails = new Set(Array.from(tbody.querySelectorAll('.service-details[open]'), el => el.closest('.row').dataset.id));
+  const active = document.activeElement;
+  const focusedId = tbody.contains(active) ? active.closest('.row')?.dataset.id : null;
+  const focusedAction = active?.dataset.focus;
+  const liveIds = new Set(data.containers.map(c => c.id));
+  const html = data.containers.map((c, i) => rowHTML(c, i, {
+    firstRender, expanded: expanded.has(c.id), detailsOpen: openDetails.has(c.id),
+  })).join('');
+  for (const id of expanded) if (!liveIds.has(id)) expanded.delete(id);
+  document.getElementById('hostIp').textContent = data.hostIp || '—';
+  document.getElementById('countReadout').textContent = '应用: ' + data.containers.length;
+  tbody.innerHTML = html;
+  document.getElementById('empty').hidden = data.containers.length !== 0;
+  document.getElementById('updatedReadout').textContent = '上次更新: ' + new Date().toLocaleTimeString('zh-CN', { hour12: false });
   firstRender = false;
-}
-
-function rowHTML(c, i) {
-  const anim = firstRender
-    ? ` row-in" style="animation-delay:${Math.min(i * 45, 650)}ms`
-    : '"';
-  const nameCell = c.service !== c.containerName
-    ? `<span class="svc-name">${esc(c.service)}</span><span class="svc-sub">${esc(c.containerName)}</span>`
-    : `<span class="svc-name">${esc(c.service)}</span>`;
-  const ipCell = c.ip ? `<span class="ip-val">${esc(c.ip)}</span>` : `<span class="dim">-</span>`;
-  const portsHtml = portCell(c.ports, c.networkMode, c.id);
-  const collapsed = c.ports && c.ports.length > PREVIEW && !expanded.has(c.id);
-  const portsCls = collapsed ? 'col-ports collapsed' : 'col-ports';
-  return `<tr class="row${anim}>
-      <td class="col-svc">${nameCell}</td>
-      <td class="col-ip">${ipCell}</td>
-      <td class="col-st">${statusCell(c)}</td>
-      <td class="col-net">${networkCell(c)}</td>
-      <td class="${portsCls}">${portsHtml}</td>
-    </tr>`;
-}
-
-function networkCell(c) {
-  const m = c.networkMode || '';
-  if (m === 'host') return '<span class="net net-host">host</span>';
-  if (m === 'bridge') return '<span class="net">bridge</span>';
-  if (m === 'none') return '<span class="net dim">none</span>';
-  if (m.startsWith('container:')) return '<span class="net dim">container</span>';
-  return `<span class="net">${esc(m)}</span>`;
-}
-
-function statusCell(c) {
-  const cls = c.status === 'running'
-    ? 'led-green pulse'
-    : c.status === 'paused'
-      ? 'led-amber'
-      : 'led-red';
-  let label = c.statusText;
-  if (c.health) label += ' · ' + c.health;
-  return `<span class="status"><span class="led ${cls}"></span>${esc(label)}</span>`;
-}
-
-function portCell(ports, networkMode, id) {
-  if (!ports || ports.length === 0) {
-    if (networkMode && networkMode.startsWith('container:')) {
-      const ref = networkMode.slice('container:'.length);
-      return `<span class="dim">↳ shares ${esc(ref.slice(0, 16))}</span>`;
-    }
-    return `<span class="dim">-</span>`;
+  if (focusedId && focusedAction) {
+    const row = Array.from(tbody.querySelectorAll('.row')).find(el => el.dataset.id === focusedId);
+    row?.querySelector(`[data-focus="${focusedAction === 'ports' ? 'ports' : 'details'}"]`)?.focus({ preventScroll: true });
   }
-  const chips = ports
-    .map((p) => {
-      const proto = p.proto || 'tcp';
-      if (p.kind === 'host-listen') {
-        return `<span class="port ${proto} host" title="host 模式监听 ${esc(p.listenAddr || '')}:${p.port}">${p.port}/${proto}</span>`;
-      }
-      if (p.kind === 'mapped') {
-        return `<span class="port ${proto} mapped" title="${esc(p.hostIp || '0.0.0.0')}:${p.hostPort} -> ${p.containerPort}/${proto}">${p.hostPort}->${p.containerPort}/${proto}</span>`;
-      }
-      return `<span class="port ${proto} internal" title="未发布，仅容器内部">· ${p.containerPort}/${proto}</span>`;
-    })
-    .join('');
-  if (ports.length <= PREVIEW) return chips;
-  const more = ports.length - PREVIEW;
-  const isOpen = expanded.has(id);
-  return `${chips}<span class="port-more" tabindex="0" role="button" data-id="${esc(id)}" data-more="${more}">${isOpen ? '收起' : '+' + more}</span>`;
-}
-
-function now() {
-  return new Date().toLocaleTimeString('en-GB');
-}
-
-function esc(s) {
-  return String(s ?? '').replace(/[&<>"]/g, (m) =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m])
-  );
 }
 
 refreshBtn.addEventListener('click', load);
 autoChk.addEventListener('change', () => {
-  if (autoChk.checked) {
-    timer = setInterval(load, 5000);
-  } else {
-    clearInterval(timer);
-    timer = null;
-  }
+  clearInterval(timer);
+  timer = autoChk.checked ? setInterval(load, 5000) : null;
 });
 
-// 主题切换（亮/暗），记忆于 localStorage
 const themeToggle = document.getElementById('themeToggle');
-const themeGlyph = themeToggle.querySelector('.theme-glyph');
 function syncThemeGlyph() {
-  // 显示点击后切换到的主题：暗色时显示☀（切到亮），亮色时显示☾（切到暗）
-  themeGlyph.textContent =
-    document.documentElement.getAttribute('data-theme') === 'dark' ? '☀' : '☾';
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  themeToggle.querySelector('.theme-glyph').textContent = dark ? '☀' : '☾';
+  themeToggle.setAttribute('aria-label', dark ? '切换亮色主题' : '切换暗色主题');
 }
 themeToggle.addEventListener('click', () => {
-  const next =
-    document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', next);
-  localStorage.setItem('npv-theme', next);
+  try { localStorage.setItem('npv-theme', next); } catch { /* 存储不可用时仍可切换主题。 */ }
   syncThemeGlyph();
 });
 syncThemeGlyph();
 
-// 端口折叠/展开（事件委托，跨重渲染有效）
-function toggleMore(more) {
-  const id = more.dataset.id;
-  const cell = more.closest('.col-ports');
-  if (expanded.has(id)) {
-    expanded.delete(id);
-    cell.classList.add('collapsed');
-    more.textContent = '+' + more.dataset.more;
-  } else {
-    expanded.add(id);
-    cell.classList.remove('collapsed');
-    more.textContent = '收起';
-  }
-}
-tbody.addEventListener('click', (e) => {
-  const more = e.target.closest('.port-more');
-  if (more) toggleMore(more);
-});
-tbody.addEventListener('keydown', (e) => {
-  if (e.key !== 'Enter' && e.key !== ' ') return;
-  const more = e.target.closest('.port-more');
-  if (!more) return;
-  e.preventDefault();
-  toggleMore(more);
+tbody.addEventListener('click', event => {
+  const button = event.target.closest('.port-more');
+  if (!button) return;
+  const id = button.dataset.id;
+  const isOpen = !expanded.has(id);
+  if (isOpen) expanded.add(id); else expanded.delete(id);
+  const ports = button.closest('.ports-list').querySelectorAll('.port');
+  ports.forEach((port, index) => { port.hidden = !isOpen && index >= PREVIEW; });
+  button.setAttribute('aria-expanded', String(isOpen));
+  button.textContent = isOpen ? '收起' : '+' + (ports.length - PREVIEW) + ' 个';
+  button.setAttribute('aria-label', button.closest('.row').querySelector('.svc-name').textContent + '：' + (isOpen ? '收起端口' : '展开剩余 ' + (ports.length - PREVIEW) + ' 个端口'));
 });
 
 load();

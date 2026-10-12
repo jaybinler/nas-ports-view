@@ -10,7 +10,8 @@
   <script>
     // 首次默认亮色(高亮)主题；选择记忆于 localStorage
     (function () {
-      var t = localStorage.getItem('npv-theme');
+      var t;
+      try { t = localStorage.getItem('npv-theme'); } catch (_) {}
       if (t !== 'light' && t !== 'dark') t = 'light';
       document.documentElement.setAttribute('data-theme', t);
     })();
@@ -39,46 +40,51 @@
           <span class="theme-glyph" aria-hidden="true">☾</span>
         </button>
         <button id="refresh" class="btn-refresh" type="button" title="重新扫描">
-          <span class="btn-glyph" aria-hidden="true">↻</span> rescan
+          <span class="btn-glyph" aria-hidden="true">↻</span> 重新扫描
         </button>
         <label class="toggle" title="自动刷新 (5s)">
           <input type="checkbox" id="auto">
           <span class="toggle-track"><span class="toggle-led"></span></span>
-          <span class="toggle-label">auto</span>
+          <span class="toggle-label">自动刷新</span>
         </label>
       </div>
     </header>
 
     <div class="status-strip">
-      <span class="strip-item"><span class="led led-green" id="signalLed"></span><span id="signalText">signal ok</span></span>
-      <span class="strip-item" id="countReadout">containers: 0</span>
-      <span class="strip-item" id="updatedReadout">last scan: --:--:--</span>
+      <span class="strip-item"><span class="led" id="signalLed"></span><span id="signalText" role="status">正在连接</span></span>
+      <span class="strip-item" id="countReadout">应用: —</span>
+      <span class="strip-item" id="updatedReadout">上次更新: —</span>
       <span class="strip-spacer"></span>
       <span class="strip-item dim">docker · procfs · lan</span>
     </div>
+    <p id="notice" class="notice" role="status">正在读取容器与端口…</p>
 
     <main class="grid-wrap">
       <div class="grid-bg" aria-hidden="true"></div>
       <div class="scan-line" aria-hidden="true"></div>
       <div class="table-scroll">
-        <table class="ports-table">
+        <table class="ports-table" role="table" aria-label="NAS 应用与端口">
+          <colgroup>
+            <col class="width-svc"><col class="width-ip"><col class="width-st"><col class="width-net"><col class="width-ports">
+          </colgroup>
           <thead>
             <tr>
-              <th class="col-svc">service</th>
-              <th class="col-ip">ip.addr</th>
-              <th class="col-st">status</th>
-              <th class="col-net">net.mode</th>
-              <th class="col-ports">ports</th>
+              <th scope="col" id="heading-svc" class="col-svc">应用名称</th>
+              <th scope="col" id="heading-ip" class="col-ip">IP 地址</th>
+              <th scope="col" id="heading-st" class="col-st">运行状态</th>
+              <th scope="col" id="heading-net" class="col-net">网络模式</th>
+              <th scope="col" id="heading-ports" class="col-ports">端口</th>
             </tr>
           </thead>
-          <tbody id="tbody"></tbody>
+          <tbody id="tbody" role="rowgroup"></tbody>
         </table>
         <div id="empty" class="empty" hidden>
           <span class="empty-mark" aria-hidden="true">∅</span>
-          <span>no containers on this node</span>
+          <span>此节点暂无 Docker 容器</span>
         </div>
       </div>
     </main>
+    <p class="port-legend">端口说明：宿主监听 · 宿主端口 → 容器端口 · 内部端口不占用 NAS 端口。点击应用名称查看完整信息。</p>
 
     <footer class="footbar">
       <span>nas-ports-view</span>
@@ -86,6 +92,6 @@
     </footer>
   </div>
 
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
